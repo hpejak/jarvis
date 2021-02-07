@@ -11,9 +11,6 @@ $apiUsername = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : nu
 $apiPassword = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : null;
 
 if ($apiUsername == 'demoUsername' && $apiPassword == 'demoPassword') {
-
-
-
     if($_SERVER['REQUEST_METHOD'] == 'POST'){
         require 'waterConnection.php';
 
@@ -21,32 +18,44 @@ if ($apiUsername == 'demoUsername' && $apiPassword == 'demoPassword') {
         $output["description"] = "Empty";
 
         $body =  file_get_contents('php://input');
-        $bodyDecode = json_decode($body, true);
 
-        $year = isset($bodyDecode['year']) ? $bodyDecode['year'] : "NULL";
-        $month = isset($bodyDecode['month']) ? $bodyDecode['month'] : "NULL";
-        $cons_state_reported = isset($bodyDecode['reported']) ? $bodyDecode['reported'] : "NULL";
-        $cons_state_first_flore = isset($bodyDecode['cons_state_first_flore']) ? $bodyDecode['cons_state_first_flore'] : "NULL";
-        $cons_state_ground_flore = isset($bodyDecode['cons_state_ground_flore']) ? $bodyDecode['cons_state_ground_flore'] : "NULL";
-        $cons_state_yard_house = isset($bodyDecode['cons_state_yard_house']) ? $bodyDecode['cons_state_yard_house'] : "NULL";
-        $cons_discrepancy = isset($bodyDecode['cons_discrepancy']) ? $bodyDecode['cons_discrepancy'] : "NULL";
-        $bill_amount = isset($bodyDecode['bill_amount']) ? $bodyDecode['bill_amount'] : "NULL";
-        $amount_communicated = isset($bodyDecode['amount_communicated']) ? $bodyDecode['amount_communicated'] : "NULL";
-        $received_external = isset($bodyDecode['received_external']) ? $bodyDecode['received_external'] : "NULL";
-        $read_date = isset($bodyDecode['read_date']) ? $bodyDecode['read_date'] : "NULL";
+        if (!$body) {
+            $output["status"] = "ERROR";
+            $output["description"] = "Body is empty";
 
-        $query = "INSERT INTO water
+        } else {
+
+            $bodyDecode = json_decode($body, true);
+
+            $year = isset($bodyDecode['year']) ? $bodyDecode['year'] : "NULL";
+            $month = isset($bodyDecode['month']) ? $bodyDecode['month'] : "NULL";
+            $cons_state_reported = isset($bodyDecode['cons_state_reported']) ? $bodyDecode['cons_state_reported'] : "NULL";
+            $cons_state_first_flore = isset($bodyDecode['cons_state_first_flore']) ? $bodyDecode['cons_state_first_flore'] : "NULL";
+            $cons_state_ground_flore = isset($bodyDecode['cons_state_ground_flore']) ? $bodyDecode['cons_state_ground_flore'] : "NULL";
+            $cons_state_yard_house = isset($bodyDecode['cons_state_yard_house']) ? $bodyDecode['cons_state_yard_house'] : "NULL";
+            $consumption_discrepancy = isset($bodyDecode['consumption_discrepancy']) ? $bodyDecode['consumption_discrepancy'] : "NULL";
+            $bill_amount = isset($bodyDecode['bill_amount']) ? $bodyDecode['bill_amount'] : "NULL";
+            $cons_state_bill = isset($bodyDecode['cons_state_bill']) ? $bodyDecode['cons_state_bill'] : "NULL";
+            $amount_communicated = isset($bodyDecode['amount_communicated']) ? $bodyDecode['amount_communicated'] : "NULL";
+            $received_external = isset($bodyDecode['received_external']) ? $bodyDecode['received_external'] : "NULL";
+            $read_date = isset($bodyDecode['read_date']) ? $bodyDecode['read_date'] : "NULL";
+            $bill_payed_date = isset($bodyDecode['bill_payed_date']) ? $bodyDecode['bill_payed_date'] : "NULL";
+            $consumption_first_flore = isset($bodyDecode['consumption_first_flore']) ? $bodyDecode['consumption_first_flore'] : "NULL";
+
+            $query = "INSERT INTO water
                   (year, month, cons_state_reported, cons_state_first_flore, cons_state_ground_flore, cons_state_yard_house, 
-                   cons_discrepancy, bill_amount, amount_communicated, received_external, read_date) 
+                   consumption_discrepancy, bill_amount, cons_state_bill, amount_communicated, received_external, read_date, bill_payed_date, consumption_first_flore) 
                    VALUES ($year, $month, $cons_state_reported, $cons_state_first_flore, $cons_state_ground_flore, $cons_state_yard_house,
-                    $cons_discrepancy, $bill_amount, $amount_communicated, $received_external, $read_date);";
+                    $consumption_discrepancy, $bill_amount, $cons_state_bill, $amount_communicated, $received_external, $read_date, $bill_payed_date, $consumption_first_flore) 
+                    RETURNING id,year,month,cons_state_reported;";
 
-        // TODO Catch error to var and return it in json
-        $insert = pg_query($query) or die('Query failed: '.pg_last_error());
+            $insert = @pg_query($query) or die("Insert Fail >>>> ".pg_last_error());
 
-        $output["insert"] = $insert;
-        $output["cons_state_reported"] =$cons_state_reported;
-        $output["data"] = isset($bodyDecode['test']) ? $bodyDecode['test'] : "NULL";
+            $output["insert_status"] = pg_result_status($insert);
+            $insert_data = pg_fetch_row($insert);
+
+            $output["data"] = isset($insert_data) ? $insert_data : "NULL";
+        }
 
     } else {
         $output["status"] = "Unsupported";
@@ -58,5 +67,6 @@ if ($apiUsername == 'demoUsername' && $apiPassword == 'demoPassword') {
     $output["description"] = "Authorization failed";
 }
 
+pg_close();
 
 echo json_encode($output);
